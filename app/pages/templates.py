@@ -8,9 +8,46 @@ def template_card(template: Template) -> rx.Component:
     return rx.el.div(
         rx.el.div(
             rx.el.div(
-                rx.el.span(
-                    template["category"],
-                    class_name="text-xs font-medium bg-[#e0e8ff] text-[#0f62fe] px-2 py-1 rounded-sm mb-3 inline-block",
+                rx.el.div(
+                    rx.el.span(
+                        template["category"],
+                        class_name="text-xs font-medium bg-[#e0e8ff] text-[#0f62fe] px-2 py-1 rounded-sm mb-3 inline-block",
+                    ),
+                    rx.menu.root(
+                        rx.menu.trigger(
+                            rx.el.button(
+                                rx.icon(
+                                    "gallery_horizontal",
+                                    class_name="h-5 w-5 text-[#525252]",
+                                ),
+                                class_name="p-1 hover:bg-[#e5e5e5] rounded-full",
+                                on_click=rx.stop_propagation,
+                            )
+                        ),
+                        rx.menu.content(
+                            rx.menu.item(
+                                "Edit",
+                                on_click=lambda: TemplateBuilderState.open_builder_with_template(
+                                    template
+                                ),
+                            ),
+                            rx.menu.item(
+                                "Duplicate",
+                                on_click=lambda: AppState.duplicate_template(
+                                    template["id"]
+                                ),
+                            ),
+                            rx.menu.separator(),
+                            rx.menu.item(
+                                "Delete",
+                                on_click=lambda: AppState.confirm_delete_template(
+                                    template["id"]
+                                ),
+                                color="red",
+                            ),
+                        ),
+                    ),
+                    class_name="flex justify-between items-start",
                 ),
                 rx.el.h3(
                     template["name"],
@@ -571,6 +608,40 @@ def template_builder_view() -> rx.Component:
     )
 
 
+def delete_template_confirmation_modal() -> rx.Component:
+    return rx.cond(
+        AppState.confirm_delete_template_id != "",
+        rx.el.div(
+            rx.el.div(
+                rx.el.h3(
+                    "Delete Template?",
+                    class_name="text-lg font-semibold text-[#161616] mb-3",
+                ),
+                rx.el.p(
+                    "Are you sure you want to delete this template? This action cannot be undone and may affect existing document generation workflows.",
+                    class_name="text-sm text-[#525252] mb-6",
+                ),
+                rx.el.div(
+                    rx.el.button(
+                        "Cancel",
+                        on_click=AppState.cancel_delete_template,
+                        class_name="px-4 py-2 text-[#525252] hover:bg-[#e5e5e5] rounded-sm mr-3 transition-colors",
+                    ),
+                    rx.el.button(
+                        "Delete",
+                        on_click=AppState.delete_template,
+                        class_name="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-sm transition-colors",
+                    ),
+                    class_name="flex justify-end",
+                ),
+                class_name="bg-white w-full max-w-md p-6 rounded-sm shadow-xl",
+            ),
+            class_name="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4",
+        ),
+        rx.fragment(),
+    )
+
+
 def templates_page() -> rx.Component:
     return layout(
         rx.cond(
@@ -580,6 +651,7 @@ def templates_page() -> rx.Component:
                 class_name="p-8 max-w-[1400px] mx-auto animate-fade-in",
             ),
             rx.el.div(
+                delete_template_confirmation_modal(),
                 rx.el.div(
                     rx.el.div(
                         rx.el.h1(

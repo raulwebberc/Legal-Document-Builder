@@ -57,6 +57,7 @@ class AppState(rx.State):
     inline_attr_type: str = "text"
     inline_attr_required: bool = False
     confirm_delete_entity_id: str = ""
+    confirm_delete_template_id: str = ""
     entity_search: str = ""
 
     @rx.event
@@ -215,6 +216,40 @@ class AppState(rx.State):
                 self.close_entity_modal()
             self.confirm_delete_entity_id = ""
             yield rx.toast("Entity deleted")
+
+    @rx.event
+    def duplicate_template(self, template_id: str):
+        import uuid
+        from datetime import datetime
+
+        for t in self.templates:
+            if t["id"] == template_id:
+                new_template = t.copy()
+                new_template["id"] = str(uuid.uuid4())
+                new_template["name"] = f"{t['name']} (Copy)"
+                new_template["last_modified"] = datetime.now().strftime("%Y-%m-%d")
+                self.templates.append(new_template)
+                db.save_template(new_template)
+                yield rx.toast(f"Duplicated {t['name']}")
+                break
+
+    @rx.event
+    def confirm_delete_template(self, template_id: str):
+        self.confirm_delete_template_id = template_id
+
+    @rx.event
+    def cancel_delete_template(self):
+        self.confirm_delete_template_id = ""
+
+    @rx.event
+    def delete_template(self):
+        if self.confirm_delete_template_id:
+            self.templates = [
+                t for t in self.templates if t["id"] != self.confirm_delete_template_id
+            ]
+            db.delete_template(self.confirm_delete_template_id)
+            self.confirm_delete_template_id = ""
+            yield rx.toast("Template deleted")
 
     @rx.event
     def start_inline_add(self, entity_id: str):
