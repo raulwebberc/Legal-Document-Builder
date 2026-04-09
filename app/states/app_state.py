@@ -43,7 +43,6 @@ class AppState(rx.State):
 
     sidebar_collapsed: bool = False
     current_path: str = "/"
-    _initialized: bool = False
     entities: list[EntityType] = []
     templates: list[Template] = []
     editing_entity_id: str = ""
@@ -62,16 +61,14 @@ class AppState(rx.State):
 
     @rx.event
     def load_data(self):
-        if not self._initialized:
-            try:
-                db.init_db()
-                self.entities = db.get_all_entities()
-                self.templates = db.get_all_templates()
-                self._initialized = True
-            except Exception as e:
-                import logging
+        try:
+            db.init_db()
+            self.entities = db.get_all_entities()
+            self.templates = db.get_all_templates()
+        except Exception as e:
+            import logging
 
-                logging.exception(f"Error initializing database: {e}")
+            logging.exception(f"Error initializing database: {e}")
 
     @rx.var
     def filtered_entities(self) -> list[EntityType]:
