@@ -9,9 +9,15 @@ def template_card(template: Template) -> rx.Component:
         rx.el.div(
             rx.el.div(
                 rx.el.div(
-                    rx.el.span(
-                        template["category"],
-                        class_name="text-xs font-medium bg-[#e0e8ff] text-[#0f62fe] px-2 py-1 rounded-sm mb-3 inline-block",
+                    rx.el.div(
+                        rx.el.span(
+                            template["category"],
+                            class_name="text-xs font-medium bg-[#e0e8ff] text-[#0f62fe] px-2 py-1 rounded-sm mb-3 inline-block",
+                        ),
+                        class_name="cursor-pointer",
+                        on_click=lambda: TemplateBuilderState.open_builder_with_template(
+                            template
+                        ),
                     ),
                     rx.menu.root(
                         rx.menu.trigger(
@@ -49,15 +55,20 @@ def template_card(template: Template) -> rx.Component:
                     ),
                     class_name="flex justify-between items-start",
                 ),
-                rx.el.h3(
-                    template["name"],
-                    class_name="text-lg font-semibold text-[#161616] mb-2",
+                rx.el.div(
+                    rx.el.h3(
+                        template["name"],
+                        class_name="text-lg font-semibold text-[#161616] mb-2",
+                    ),
+                    rx.el.p(
+                        template["description"],
+                        class_name="text-sm text-[#525252] h-10 line-clamp-2 mb-4",
+                    ),
+                    class_name="flex-1 cursor-pointer",
+                    on_click=lambda: TemplateBuilderState.open_builder_with_template(
+                        template
+                    ),
                 ),
-                rx.el.p(
-                    template["description"],
-                    class_name="text-sm text-[#525252] h-10 line-clamp-2 mb-4",
-                ),
-                class_name="flex-1",
             ),
             rx.el.div(
                 rx.el.span(
@@ -68,8 +79,7 @@ def template_card(template: Template) -> rx.Component:
             ),
             class_name="flex flex-col h-full",
         ),
-        on_click=lambda: TemplateBuilderState.open_builder_with_template(template),
-        class_name="bg-white p-6 border border-[#e5e5e5] hover:border-[#0f62fe] hover:shadow-md cursor-pointer transition-all duration-200 rounded-sm focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[#0f62fe]",
+        class_name="bg-white p-6 border border-[#e5e5e5] hover:border-[#0f62fe] hover:shadow-md transition-all duration-200 rounded-sm focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-[#0f62fe]",
         tabindex="0",
     )
 
