@@ -3,6 +3,7 @@ import json
 import os
 import hashlib
 from typing import Any
+import logging
 
 DB_PATH = "legaldoc.db"
 
@@ -36,8 +37,13 @@ def init_db():
         category TEXT NOT NULL DEFAULT 'Contract',
         description TEXT DEFAULT '',
         content TEXT DEFAULT '',
+        template_data TEXT DEFAULT '',
         last_modified TEXT DEFAULT ''
     )""")
+    try:
+        cursor.execute("ALTER TABLE templates ADD COLUMN template_data TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        logging.exception("Unexpected error")
     cursor.execute("""CREATE TABLE IF NOT EXISTS documents (
         id TEXT PRIMARY KEY,
         name TEXT NOT NULL,
@@ -53,7 +59,10 @@ def init_db():
             ("1", "admin", admin_hash, "admin", "2024-01-01"),
         )
     cursor.execute("SELECT COUNT(*) FROM entities")
-    if cursor.fetchone()[0] == 0:
+    entities_empty = cursor.fetchone()[0] == 0
+    conn.commit()
+    conn.close()
+    if entities_empty:
         entities = [
             {
                 "id": "1",
@@ -118,9 +127,80 @@ def init_db():
                 "id": "1",
                 "name": "Non-Disclosure Agreement",
                 "category": "Agreement",
-                "description": "Standard mutual NDA",
-                "content": "This Non-Disclosure Agreement is entered into by and between {{Person.Full Name}} and {{Company.Legal Name}}...",
-                "last_modified": "2023-10-25",
+                "description": "Standard mutual NDA for business exploration.",
+                "content": 'This Non-Disclosure Agreement (the "Agreement") is entered into on {{Effective Date}} by and between {{Disclosing Party.Legal Name}} ("Disclosing Party"), and {{Receiving Party.Full Name}} ("Receiving Party").',
+                "template_data": json.dumps(
+                    {
+                        "paragraphs": [
+                            {
+                                "id": "p1",
+                                "title": "Parties",
+                                "example_text": 'This Non-Disclosure Agreement (the "Agreement") is entered into on {{Effective Date}} by and between {{Disclosing Party.Legal Name}} ("Disclosing Party"), and {{Receiving Party.Full Name}} ("Receiving Party").',
+                                "requirements": [
+                                    {
+                                        "id": "r1",
+                                        "entity_id": "ent_receiving",
+                                        "attribute_name": "Full Name",
+                                        "required": True,
+                                    },
+                                    {
+                                        "id": "r2",
+                                        "entity_id": "ent_disclosing",
+                                        "attribute_name": "Legal Name",
+                                        "required": True,
+                                    },
+                                ],
+                            },
+                            {
+                                "id": "p2",
+                                "title": "Confidentiality",
+                                "example_text": "The Receiving Party agrees to maintain the secrecy of information disclosed in the jurisdiction of {{Jurisdiction}}.",
+                                "requirements": [],
+                            },
+                        ],
+                        "template_entities": [
+                            {
+                                "id": "ent_receiving",
+                                "name": "Receiving Party",
+                                "type": "Person",
+                                "attributes": [
+                                    {
+                                        "name": "Full Name",
+                                        "type": "text",
+                                        "required": True,
+                                    }
+                                ],
+                            },
+                            {
+                                "id": "ent_disclosing",
+                                "name": "Disclosing Party",
+                                "type": "Company",
+                                "attributes": [
+                                    {
+                                        "name": "Legal Name",
+                                        "type": "text",
+                                        "required": True,
+                                    }
+                                ],
+                            },
+                        ],
+                        "global_requirements": [
+                            {
+                                "id": "g1",
+                                "name": "Effective Date",
+                                "type": "date",
+                                "description": "When the NDA starts",
+                            },
+                            {
+                                "id": "g2",
+                                "name": "Jurisdiction",
+                                "type": "text",
+                                "description": "Governing law",
+                            },
+                        ],
+                    }
+                ),
+                "last_modified": "2024-01-01",
             },
             {
                 "id": "2",
@@ -128,6 +208,7 @@ def init_db():
                 "category": "Authorization",
                 "description": "General power of attorney",
                 "content": "I, {{Person.Full Name}}, residing at {{Person.Address}}, hereby appoint...",
+                "template_data": "",
                 "last_modified": "2023-10-26",
             },
             {
@@ -136,6 +217,7 @@ def init_db():
                 "category": "Contract",
                 "description": "Residential property lease",
                 "content": "This Lease Agreement is made between {{Company.Legal Name}} (Landlord) and {{Person.Full Name}} (Tenant) for the property located at {{Property.Address}}...",
+                "template_data": "",
                 "last_modified": "2023-10-27",
             },
         ]
@@ -147,20 +229,18 @@ def init_db():
                 "name": "Acme Corp NDA",
                 "template_id": "1",
                 "status": "completed",
-                "created_at": "2023-10-28",
+                "created_at": "2024-01-02",
             },
             {
                 "id": "2",
                 "name": "Jane Doe Lease",
                 "template_id": "3",
                 "status": "in-progress",
-                "created_at": "2023-10-29",
+                "created_at": "2024-01-03",
             },
         ]
         for d in documents:
             save_document(d)
-    conn.commit()
-    conn.close()
 
 
 def get_all_entities() -> list[dict]:
@@ -219,6 +299,9 @@ def get_all_templates() -> list[dict]:
             "category": row["category"],
             "description": row["description"],
             "content": row["content"],
+            "template_data": row["template_data"]
+            if "template_data" in row.keys()
+            else "",
             "last_modified": row["last_modified"],
         }
         for row in rows
@@ -229,13 +312,14 @@ def save_template(template: dict):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute(
-        "INSERT OR REPLACE INTO templates (id, name, category, description, content, last_modified) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT OR REPLACE INTO templates (id, name, category, description, content, template_data, last_modified) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             template["id"],
             template["name"],
             template.get("category", "Contract"),
             template.get("description", ""),
             template.get("content", ""),
+            template.get("template_data", ""),
             template.get("last_modified", ""),
         ),
     )

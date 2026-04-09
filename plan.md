@@ -3,7 +3,7 @@
 ## Phase 1: Core Data Models, Entity/Template Management UI ✅
 - [x] Define data models for entities, attributes, templates, and documents
 - [x] Build sidebar navigation with Carbon Design System styling
-- [x] Create Entity Manager page - CRUD for entity types (Person, Company, Property, etc.) with attribute definitions
+- [x] Create Entity Manager page - CRUD for entity types with attribute definitions
 - [x] Create Template Manager page - template creation with entity/attribute placeholder insertion
 - [x] Implement template editor with rich text area and placeholder tag system
 
@@ -20,37 +20,31 @@
 - [x] Final UI polish - responsive layout, notifications, empty states, loading states
 
 ## Phase 4: Landing Page (DocDraft-inspired) ✅
-- [x] Build public landing page at /landing with warm cream/bronze color scheme
-- [x] Hero section with headline, subtitle, CTA buttons, and hero image
-- [x] Logo bar / trust badges section
-- [x] Features grid (6 cards, 3 columns, alternating light/dark)
-- [x] Results/stats section with image + stat numbers
-- [x] Comparison table (traditional vs DocDraft)
-- [x] Waitlist/CTA section with email form
-- [x] Final CTA section with image
-- [x] Footer with columns and links
-- [x] Responsive design for all breakpoints
+- [x] All landing page sections built and responsive
 
 ## Phase 5: SQLite Persistence Layer ✅
-- [x] Create database module with SQLite connection, table creation, and CRUD helpers for entities, templates, documents, and global requirements
-- [x] Migrate AppState to load/save entities and templates from SQLite instead of hardcoded defaults
-- [x] Migrate DocumentState to load/save documents from SQLite
-- [x] Migrate TemplateBuilderState to persist template entities and global requirements to SQLite
+- [x] Database module with SQLite CRUD helpers
+- [x] All states migrated to load/save from SQLite
 
 ## Phase 6: SQLite Integration with Remaining States & Seeding ✅
-- [x] Seed database with default data on first run (4 entities, 3 templates, 2 documents)
-- [x] Ensure all CRUD events (create, update, delete, duplicate) write to SQLite
-- [x] Ensure app loads data from SQLite on page load / state init
-- [x] Test full persistence cycle (create, refresh, verify data survives)
+- [x] Seed data, full persistence cycle verified
 
-## Phase 7: Authentication - Database, Login Page & Auth State ✅
-- [x] Add users table to SQLite (id, username, password_hash, role, created_at) with default admin account seeded
-- [x] Create AuthState with login/logout events, session tracking, and password hashing via hashlib
-- [x] Build login page with username/password form, error messages, and redirect to dashboard on success
-- [x] Protect all app pages — redirect unauthenticated users to /login
+## Phase 7: Authentication ✅
+- [x] Users table, AuthState, login page, route protection
 
 ## Phase 8: User Management Admin Page & Sidebar Integration ✅
-- [x] Build admin-only User Management page with list of users, add/edit/delete functionality
-- [x] Add change password functionality for the logged-in user
-- [x] Add user info and logout button to the sidebar (replacing the static "Admin User" display)
-- [x] Add "Users" nav item in sidebar visible only to admin role
+- [x] Admin user management, change password, sidebar user info
+
+## Phase 9: Structured Template Persistence for AI Context ✅
+- [x] Add `template_data` JSON column to templates table in db.py
+- [x] Update `save_template` in TemplateBuilderState to serialize and persist the full structured data
+- [x] Update `open_builder_with_template` to deserialize and restore full structured data from JSON
+- [x] Update `db.py` save_template/get_all_templates to handle the new template_data column
+- [x] Ensure backward compatibility — existing templates without template_data still load correctly
+
+## Phase 10: AI Assistant with Real Context
+- [ ] Check for AI API key (OpenAI or Anthropic) availability
+- [ ] Build a helper function that assembles full context from a template: structured paragraphs, requirements, entity definitions with attributes, global requirements — formatted as a rich prompt
+- [ ] Integrate Agno agent in ChatState with the template/entity context as system knowledge
+- [ ] Update AI assistant page to allow selecting a template for context, then chat with real AI responses
+- [ ] Wire the document preview panel to show AI-generated/filled content in real time

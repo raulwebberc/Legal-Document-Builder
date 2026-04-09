@@ -2,6 +2,7 @@ import reflex as rx
 from typing import TypedDict, Any
 import uuid
 import app.db as db
+import logging
 
 
 class Requirement(TypedDict):
@@ -64,8 +65,6 @@ class TemplateBuilderState(rx.State):
 
     @rx.event
     async def open_builder(self):
-        from app.states.app_state import AppState
-
         self.is_builder_active = True
         self.editing_template_id = ""
         self.template_name = ""
@@ -80,29 +79,13 @@ class TemplateBuilderState(rx.State):
                 "requirements": [],
             }
         ]
-        app_state = await self.get_state(AppState)
         self.template_entities = []
-        for e in app_state.entities:
-            self.template_entities.append(
-                {
-                    "id": e["id"],
-                    "name": e["name"],
-                    "type": e["name"],
-                    "attributes": [
-                        {
-                            "name": a["name"],
-                            "type": a["type"],
-                            "required": a["required"],
-                        }
-                        for a in e["attributes"]
-                    ],
-                }
-            )
         self.is_creating_entity = False
         self.show_preview = False
 
     @rx.event
     async def open_builder_with_template(self, template: dict[str, str]):
+        import json
         from app.states.app_state import AppState
 
         self.is_builder_active = True
@@ -110,48 +93,59 @@ class TemplateBuilderState(rx.State):
         self.template_name = template["name"]
         self.template_category = template["category"]
         self.template_description = template["description"]
-        self.global_requirements = []
-        raw_paragraphs = template["content"].split("""
+        template_data_json = template.get("template_data", "")
+        if template_data_json:
+            try:
+                data = json.loads(template_data_json)
+                self.paragraphs = data.get("paragraphs", [])
+                self.template_entities = data.get("template_entities", [])
+                self.global_requirements = data.get("global_requirements", [])
+            except Exception:
+                logging.exception("Unexpected error")
+                template_data_json = ""
+        if not template_data_json:
+            self.global_requirements = []
+            raw_paragraphs = template["content"].split("""
 
 """)
-        self.paragraphs = []
-        for chunk in raw_paragraphs:
-            if chunk.strip():
-                self.paragraphs.append(
+            self.paragraphs = []
+            for chunk in raw_paragraphs:
+                if chunk.strip():
+                    self.paragraphs.append(
+                        {
+                            "id": str(uuid.uuid4()),
+                            "title": "",
+                            "example_text": chunk.strip(),
+                            "requirements": [],
+                        }
+                    )
+            if len(self.paragraphs) == 0:
+                self.paragraphs = [
                     {
                         "id": str(uuid.uuid4()),
                         "title": "",
-                        "example_text": chunk.strip(),
+                        "example_text": "",
                         "requirements": [],
                     }
+                ]
+            app_state = await self.get_state(AppState)
+            self.template_entities = []
+            for e in app_state.entities:
+                self.template_entities.append(
+                    {
+                        "id": e["id"],
+                        "name": e["name"],
+                        "type": e["name"],
+                        "attributes": [
+                            {
+                                "name": a["name"],
+                                "type": a["type"],
+                                "required": a["required"],
+                            }
+                            for a in e["attributes"]
+                        ],
+                    }
                 )
-        if len(self.paragraphs) == 0:
-            self.paragraphs = [
-                {
-                    "id": str(uuid.uuid4()),
-                    "title": "",
-                    "example_text": "",
-                    "requirements": [],
-                }
-            ]
-        app_state = await self.get_state(AppState)
-        self.template_entities = []
-        for e in app_state.entities:
-            self.template_entities.append(
-                {
-                    "id": e["id"],
-                    "name": e["name"],
-                    "type": e["name"],
-                    "attributes": [
-                        {
-                            "name": a["name"],
-                            "type": a["type"],
-                            "required": a["required"],
-                        }
-                        for a in e["attributes"]
-                    ],
-                }
-            )
         self.is_creating_entity = False
         self.show_preview = False
 
@@ -423,6 +417,7 @@ class TemplateBuilderState(rx.State):
 
     @rx.event
     async def save_template(self, status: str):
+        import json
         from app.states.app_state import AppState
         from datetime import datetime
 
@@ -435,6 +430,13 @@ class TemplateBuilderState(rx.State):
 
 """
             )
+        template_data = json.dumps(
+            {
+                "paragraphs": self.paragraphs,
+                "template_entities": self.template_entities,
+                "global_requirements": self.global_requirements,
+            }
+        )
         app_state = await self.get_state(AppState)
         if self.editing_template_id != "":
             for i, t in enumerate(app_state.templates):
@@ -445,6 +447,7 @@ class TemplateBuilderState(rx.State):
                         "category": self.template_category,
                         "description": self.template_description,
                         "content": content.strip(),
+                        "template_data": template_data,
                         "last_modified": datetime.now().strftime("%Y-%m-%d"),
                     }
                     app_state.templates[i] = updated_template
@@ -457,6 +460,7 @@ class TemplateBuilderState(rx.State):
                 "category": self.template_category,
                 "description": self.template_description,
                 "content": content.strip(),
+                "template_data": template_data,
                 "last_modified": datetime.now().strftime("%Y-%m-%d"),
             }
             app_state.templates.append(new_template)

@@ -24,6 +24,7 @@ class Template(TypedDict):
     category: str
     description: str
     content: str
+    template_data: str
     last_modified: str
 
 
